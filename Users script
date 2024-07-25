@@ -1,0 +1,60 @@
+// ==UserScript==
+// @name         Event Blocker
+// @namespace    http://tampermonkey.net/
+// @version      0.2
+// @description  Block various browser events and APIs to enhance privacy
+// @match        *://*/*
+// @grant        none
+// @run-at       document-start
+// ==/UserScript==
+// Test on https://webbrowsertools.com/test-always-active/
+
+(function() {
+    'use strict';
+
+    const eventsToBlock = [
+        'visibilitychange', 'webkitvisibilitychange', 'mozvisibilitychange',
+        'pagehide', 'mouseenter', 'mouseleave', 'focusin', 'focusout',
+        'focus', 'blur', 'resize', 'scroll'
+    ];
+
+    function blockEvent(event) {
+        event.stopImmediatePropagation();
+        event.preventDefault();
+    }
+
+    eventsToBlock.forEach(eventName => {
+        document.addEventListener(eventName, blockEvent, true);
+        window.addEventListener(eventName, blockEvent, true);
+    });
+
+    // Block requestAnimationFrame
+    const originalRAF = window.requestAnimationFrame;
+    window.requestAnimationFrame = function(callback) {
+        const delay = Math.random() * 10 + 5;  // Random delay between 5-15ms
+        return setTimeout(() => {
+            callback(performance.now() + delay);
+        }, delay);
+    };
+
+    // Modify Performance API
+    const originalNow = performance.now;
+    performance.now = function() {
+        return originalNow.call(performance) + (Math.random() * 10);
+    };
+
+    // Intercept Intersection Observer
+    const originalIntersectionObserver = window.IntersectionObserver;
+    window.IntersectionObserver = function(callback, options) {
+        return new originalIntersectionObserver((entries, observer) => {
+            // Modify entries to always show as not intersecting
+            entries.forEach(entry => {
+                Object.defineProperty(entry, 'isIntersecting', {value: false});
+                Object.defineProperty(entry, 'intersectionRatio', {value: 0});
+            });
+            callback(entries, observer);
+        }, options);
+    };
+
+    // Additional protections can be added here
+})();
